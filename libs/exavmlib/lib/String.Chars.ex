@@ -1,24 +1,3 @@
-#
-# This file is part of elixir-lang.
-#
-# Copyright 2013-2023 Elixir Contributors
-# https://github.com/elixir-lang/elixir/commits/v1.17.2/lib/elixir/lib/string/chars.ex
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
 import Kernel, except: [to_string: 1]
 
 defprotocol String.Chars do
@@ -41,4 +20,43 @@ defprotocol String.Chars do
   """
   @spec to_string(t) :: String.t()
   def to_string(term)
+end
+
+defimpl String.Chars, for: Atom do
+  def to_string(nil) do
+    ""
+  end
+
+  def to_string(atom) do
+    Atom.to_string(atom)
+  end
+end
+
+defimpl String.Chars, for: BitString do
+  def to_string(term) when is_binary(term) do
+    term
+  end
+
+  def to_string(term) do
+    raise Protocol.UndefinedError,
+      protocol: @protocol,
+      value: term,
+      description: "cannot convert a bitstring to a string"
+  end
+end
+
+defimpl String.Chars, for: List do
+  def to_string(charlist), do: List.to_string(charlist)
+end
+
+defimpl String.Chars, for: Integer do
+  def to_string(term) do
+    Integer.to_string(term)
+  end
+end
+
+defimpl String.Chars, for: Float do
+  def to_string(term) do
+    Float.to_string(term)
+  end
 end

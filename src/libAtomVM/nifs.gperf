@@ -103,6 +103,7 @@ erlang:tuple_to_list/1, &tuple_to_list_nif
 erlang:universaltime/0, &universaltime_nif
 erlang:localtime/0, &localtime_nif
 erlang:localtime/1, &localtime_nif
+erlang:unique_integer/0, &unique_integer_nif
 erlang:timestamp/0, &timestamp_nif
 erlang:process_flag/2, &process_flag_nif
 erlang:process_flag/3, &process_flag_nif
@@ -130,7 +131,8 @@ erts_debug:flat_size/1, &flat_size_nif
 ets:new/2, &ets_new_nif
 ets:insert/2, &ets_insert_nif
 ets:lookup/2, &ets_lookup_nif
-ets:lookup_element/3, &ets_lookup_element_nif
+ets:lookup_element/3, &ets_lookup_element_3_nif
+ets:lookup_element/4, &ets_lookup_element_4_nif
 ets:delete/2, &ets_delete_nif
 atomvm:add_avm_pack_binary/2, &atomvm_add_avm_pack_binary_nif
 atomvm:add_avm_pack_file/2, &atomvm_add_avm_pack_file_nif

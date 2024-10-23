@@ -21,22 +21,24 @@ SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8" />
-    <title>AtomVM emscripten examples</title>
+    <title>AtomVM elixir test</title>
   </head>
   <body>
-    <h1>AtomVM emscripten examples</h1>
+    <h1>AtomVM elixir test</h1>
     <p>
-      Examples require that you build AtomVM emscripten port with
-      <code>-DAVM_EMSCRIPTEN_ENV=web</code>, as well as AtomVM generic_unix port
-      (to compile libraries and example files).
+        Testing elixir console log
     </p>
-    <ul>
-      <li><a href="hello_world_avm.html">Hello world</a> (AVM version)</li>
-      <li><a href="hello_world_beam.html">Hello world</a> (Beam version)</li>
-      <li><a href="run_script.html">Run script</a></li>
-      <li><a href="call_cast.html">Call &amp; cast</a></li>
-      <li><a href="html5_events.html">HTML5 Events</a></li>
-      <li><a href="elixir_test.html">ELIXIR TEST</a></li>
-    </ul>
+    <p>Please check the console for hello_world output.</p>
+    <script>
+      // Arguments are loaded using fetch API.
+      // wasm_webserver serves under /build/ files in build subdirectory.
+      var Module = {
+        arguments: [
+          "/build/examples/elixir/Elixir.CompilerTest.beam",
+          "/build/libs/atomvmlib.avm",
+        ],
+      };
+    </script>
+    <script async src="/AtomVM.js"></script>
   </body>
 </html>

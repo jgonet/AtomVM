@@ -107,7 +107,11 @@
     term_to_binary/1,
     timestamp/0,
     universaltime/0,
-    localtime/0
+    unique_integer/0,
+    localtime/0,
+    spawn_monitor/1,
+    spawn_monitor/2,
+    spawn_monitor/3
 ]).
 
 -export_type([
@@ -914,6 +918,62 @@ spawn_link(Function) ->
 spawn_link(Module, Function, Args) ->
     erlang:spawn_opt(Module, Function, Args, [link]).
 
+
+-doc """
+Returns the process identifier of a new process, started by the application of
+`Fun` to the empty list `[]`, and a reference for a monitor created to the new
+process. Otherwise works like `spawn/3`.
+""".
+-doc #{ group => processes }.
+-spec spawn_monitor(Fun) -> {pid(), reference()} when
+      Fun :: function().
+spawn_monitor(F) when erlang:is_function(F, 0) ->
+    erlang:spawn_opt(erlang,apply,[F,[]],[monitor]);
+spawn_monitor(F) ->
+    badarg_with_info([F]).
+
+-doc """
+Returns the process identifier of a new process, started by the application of
+`Fun` to the empty list `[]` on the node `Node`, and a reference for a monitor
+created to the new process. Otherwise works like `spawn/3`.
+
+If the node identified by `Node` does not support distributed `spawn_monitor()`,
+the call will fail with a `notsup` exception.
+""".
+-doc(#{since => <<"OTP 23.0">>}).
+-doc #{ group => processes }.
+-spec spawn_monitor(Node, Fun) -> {pid(), reference()} when
+      Node :: node(),
+      Fun :: function().
+
+spawn_monitor(Node, F) when erlang:is_atom(Node), erlang:is_function(F, 0) ->
+    try
+        erlang:spawn_monitor(Node,erlang,apply,[F,[]])
+    catch
+        error:Err ->
+            error_with_info(Err, [Node, F])
+    end;
+spawn_monitor(Node, F) ->
+    badarg_with_info([Node, F]).
+
+-doc """
+A new process is started by the application of `Module:Function` to `Args`. The
+process is monitored at the same time. Returns the process identifier and a
+reference for the monitor. Otherwise works like `spawn/3`.
+""".
+-doc #{ group => processes }.
+-spec spawn_monitor(Module, Function, Args) -> {pid(), reference()} when
+      Module :: module(),
+      Function :: atom(),
+      Args :: [term()].
+spawn_monitor(M, F, A) when erlang:is_atom(M),
+                            erlang:is_atom(F),
+                            erlang:is_list(A) ->
+    erlang:spawn_opt(M,F,A,[monitor]);
+spawn_monitor(M, F, A) ->
+    badarg_with_info([M,F,A]).
+
+
 %%-----------------------------------------------------------------------------
 %% @param   Function    function to create a process from
 %% @param   Options     additional options.
@@ -1254,3 +1314,24 @@ universaltime() ->
 -spec localtime() -> calendar:datetime().
 localtime() ->
     erlang:nif_error(undefined).
+%%-----------------------------------------------------------------------------
+%% @returns Unique integer.
+%% @doc Generates and returns an [integer unique on current runtime system instance].
+%% @end
+%%-----------------------------------------------------------------------------
+-spec unique_integer() -> integer().
+unique_integer() ->
+    erlang:list_to_integer(atomvm_rand_bytes(5)).
+
+error_with_info(Reason, Args) ->
+    erlang:error(Reason, Args, [{error_info, #{module => erl_erts_errors}}]).
+
+badarg_with_info(Args) ->
+    erlang:error(badarg, Args, [{error_info, #{module => erl_erts_errors}}]).
+
+
+atomvm_rand_bytes(N) ->
+    case erlang:system_info(machine) of
+        "BEAM" -> crypto:strong_rand_bytes(N);
+        _ -> atomvm:rand_bytes(N)
+    end.

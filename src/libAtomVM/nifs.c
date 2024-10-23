@@ -140,6 +140,7 @@ static term nif_erlang_tuple_to_list_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_list_to_tuple_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_universaltime_0(Context *ctx, int argc, term argv[]);
 static term nif_erlang_localtime(Context *ctx, int argc, term argv[]);
+static term nif_erlang_unique_integer(Context *ctx, int argc, term argv[]);
 static term nif_erlang_timestamp_0(Context *ctx, int argc, term argv[]);
 static term nif_erts_debug_flat_size(Context *ctx, int argc, term argv[]);
 static term nif_erlang_process_flag(Context *ctx, int argc, term argv[]);
@@ -155,7 +156,8 @@ static term nif_erlang_raise(Context *ctx, int argc, term argv[]);
 static term nif_ets_new(Context *ctx, int argc, term argv[]);
 static term nif_ets_insert(Context *ctx, int argc, term argv[]);
 static term nif_ets_lookup(Context *ctx, int argc, term argv[]);
-static term nif_ets_lookup_element(Context *ctx, int argc, term argv[]);
+static term nif_ets_lookup_element_3(Context *ctx, int argc, term argv[]);
+static term nif_ets_lookup_element_4(Context *ctx, int argc, term argv[]);
 static term nif_ets_delete(Context *ctx, int argc, term argv[]);
 static term nif_erlang_pid_to_list(Context *ctx, int argc, term argv[]);
 static term nif_erlang_ref_to_list(Context *ctx, int argc, term argv[]);
@@ -497,6 +499,12 @@ static const struct Nif localtime_nif =
     .nif_ptr = nif_erlang_localtime
 };
 
+static const struct Nif unique_integer_nif =
+{
+    .base.type = NIFFunctionType,
+    .nif_ptr = nif_erlang_unique_integer
+};
+
 static const struct Nif timestamp_nif =
 {
     .base.type = NIFFunctionType,
@@ -677,10 +685,16 @@ static const struct Nif ets_lookup_nif =
     .nif_ptr = nif_ets_lookup
 };
 
-static const struct Nif ets_lookup_element_nif =
+static const struct Nif ets_lookup_element_3_nif =
 {
     .base.type = NIFFunctionType,
-    .nif_ptr = nif_ets_lookup_element
+    .nif_ptr = nif_ets_lookup_element_3
+};
+
+static const struct Nif ets_lookup_element_4_nif =
+{
+    .base.type = NIFFunctionType,
+    .nif_ptr = nif_ets_lookup_element_4
 };
 
 static const struct Nif ets_delete_nif =
@@ -1506,6 +1520,14 @@ term nif_erlang_make_ref_0(Context *ctx, int argc, term argv[])
     uint64_t ref_ticks = globalcontext_get_ref_ticks(ctx->global);
 
     return term_from_ref_ticks(ref_ticks, &ctx->heap);
+}
+
+term nif_erlang_unique_integer(Context *ctx, int argc, term argv[]) {
+    UNUSED(ctx);
+    UNUSED(argc);
+    UNUSED(argv);
+    srand(time(NULL));
+    return term_from_int(rand());
 }
 
 term nif_erlang_monotonic_time_1(Context *ctx, int argc, term argv[])
@@ -3312,25 +3334,56 @@ static term nif_ets_insert(Context *ctx, int argc, term argv[])
     VALIDATE_VALUE(ref, is_ets_table_id);
 
     term entry = argv[1];
-    VALIDATE_VALUE(entry, term_is_tuple);
-    if (term_get_tuple_arity(entry) < 1) {
+
+    if (term_is_list(entry)) {
+        term list = entry;
+        while (!term_is_nil(list)) {
+            term head = term_get_list_head(list);
+            VALIDATE_VALUE(head, term_is_tuple);
+            if (term_get_tuple_arity(head) < 1) {
+                RAISE_ERROR(BADARG_ATOM);
+            }
+
+            EtsErrorCode result = ets_insert(ref, head, ctx);
+            if (result != EtsOk) {
+                switch (result) {
+                    case EtsTableNotFound:
+                    case EtsBadEntry:
+                    case EtsPermissionDenied:
+                        RAISE_ERROR(BADARG_ATOM);
+                    case EtsAllocationFailure:
+                        RAISE_ERROR(MEMORY_ATOM);
+                    default:
+                        AVM_ABORT();
+                }
+            }
+
+            list = term_get_list_tail(list);
+        }
+        return TRUE_ATOM;
+    } else if (term_is_tuple(entry)) {
+        if (term_get_tuple_arity(entry) < 1) {
+            RAISE_ERROR(BADARG_ATOM);
+        }
+
+        EtsErrorCode result = ets_insert(ref, entry, ctx);
+        switch (result) {
+            case EtsOk:
+                return TRUE_ATOM;
+            case EtsTableNotFound:
+            case EtsBadEntry:
+            case EtsPermissionDenied:
+                RAISE_ERROR(BADARG_ATOM);
+            case EtsAllocationFailure:
+                RAISE_ERROR(MEMORY_ATOM);
+            default:
+                AVM_ABORT();
+        }
+    } else {
         RAISE_ERROR(BADARG_ATOM);
     }
-
-    EtsErrorCode result = ets_insert(ref, entry, ctx);
-    switch (result) {
-        case EtsOk:
-            return TRUE_ATOM;
-        case EtsTableNotFound:
-        case EtsBadEntry:
-        case EtsPermissionDenied:
-            RAISE_ERROR(BADARG_ATOM);
-        case EtsAllocationFailure:
-            RAISE_ERROR(MEMORY_ATOM);
-        default:
-            AVM_ABORT();
-    }
 }
+
 
 static term nif_ets_lookup(Context *ctx, int argc, term argv[])
 {
@@ -3356,7 +3409,7 @@ static term nif_ets_lookup(Context *ctx, int argc, term argv[])
     }
 }
 
-static term nif_ets_lookup_element(Context *ctx, int argc, term argv[])
+static term nif_ets_lookup_element_3(Context *ctx, int argc, term argv[])
 {
     UNUSED(argc);
 
@@ -3377,6 +3430,35 @@ static term nif_ets_lookup_element(Context *ctx, int argc, term argv[])
         case EtsTableNotFound:
         case EtsPermissionDenied:
             RAISE_ERROR(BADARG_ATOM);
+        case EtsAllocationFailure:
+            RAISE_ERROR(MEMORY_ATOM);
+        default:
+            AVM_ABORT();
+    }
+}
+
+static term nif_ets_lookup_element_4(Context *ctx, int argc, term argv[])
+{
+    UNUSED(argc);
+
+    term ref = argv[0];
+    VALIDATE_VALUE(ref, is_ets_table_id);
+
+    term key = argv[1];
+    term pos = argv[2];
+    VALIDATE_VALUE(pos, term_is_integer);
+    term def = argv[3];
+
+    term ret = term_invalid_term();
+    EtsErrorCode result = ets_lookup_element(ref, key, term_to_int(pos), &ret, ctx);
+    switch (result) {
+        case EtsOk:
+            return ret;
+        case EtsEntryNotFound:
+        case EtsBadPosition:
+        case EtsTableNotFound:
+        case EtsPermissionDenied:
+            return def;
         case EtsAllocationFailure:
             RAISE_ERROR(MEMORY_ATOM);
         default:

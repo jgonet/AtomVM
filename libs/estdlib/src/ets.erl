@@ -29,6 +29,7 @@
     insert/2,
     lookup/2,
     lookup_element/3,
+    lookup_element/4,
     delete/2
 ]).
 
@@ -63,10 +64,9 @@ new(_Name, _Options) ->
 %% @doc Insert an entry into an ets table.
 %% @end
 %%-----------------------------------------------------------------------------
--spec insert(Table :: table(), Entry :: tuple()) -> true.
+-spec insert(Table :: table(), Entry :: tuple() | list()) -> true.
 insert(_Table, _Entry) ->
     erlang:nif_error(undefined).
-
 %%-----------------------------------------------------------------------------
 %% @param   Table a reference to the ets table
 %% @param   Key the key used to lookup one or more entries
@@ -89,6 +89,19 @@ lookup(_Table, _Key) ->
 %%-----------------------------------------------------------------------------
 -spec lookup_element(Table :: table(), Key :: term(), Pos :: pos_integer()) -> term().
 lookup_element(_Table, _Key, _Pos) ->
+    erlang:nif_error(undefined).
+
+%%-----------------------------------------------------------------------------
+%% @param   Table a reference to the ets table
+%% @param   Key the key used to lookup one or more entries
+%% @param   Pos index of the element to retrieve (1-based)
+%% @returns the Pos:nth element of entry in a set, or a list of entries, if the
+%% table permits
+%% @doc Look up an element from an entry in an ets table.
+%% @end
+%%-----------------------------------------------------------------------------
+-spec lookup_element(Table :: table(), Key :: term(), Pos :: pos_integer(), Def :: term()) -> term().
+lookup_element(_Table, _Key, _Pos, _Def) ->
     erlang:nif_error(undefined).
 
 %%-----------------------------------------------------------------------------

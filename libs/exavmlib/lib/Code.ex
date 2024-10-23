@@ -20,6 +20,7 @@
 
 defmodule Code do
   @compile {:autoload, false}
+  @type binding :: [{atom() | tuple(), any}]
   @moduledoc """
   This module is to satisfy certain code loading checks in Elixir,
   specifically with regards to protocols support.
@@ -39,4 +40,41 @@ defmodule Code do
   def ensure_compiled?(module) do
     match?({:module, ^module}, ensure_compiled(module))
   end
+
+  @spec compile_string(List.Chars.t(), binary) :: [{module, binary}]
+  def compile_string(string, file \\ "nofile") when is_binary(file) do
+    Module.ParallelChecker.verify(fn ->
+      # :elixir_compiler.string(to_charlist(string), file, fn _, _ -> :ok end)
+      :elixir_compiler.string(:unicode.characters_to_list(string), file, fn _, _ -> :ok end)
+    end)
+  end
+
+  @spec eval_string(List.Chars.t(), binding, Macro.Env.t() | keyword) :: {term, binding}
+  def eval_string(string, binding \\ [], opts \\ [])
+
+  def eval_string(string, binding, %Macro.Env{} = env) do
+    validated_eval_string(string, binding, env)
+  end
+
+  def eval_string(string, binding, opts) when is_list(opts) do
+    validated_eval_string(string, binding, opts)
+  end
+
+  def env_for_eval(env_or_opts), do: :elixir.env_for_eval(env_or_opts)
+
+  defp validated_eval_string(string, binding, opts_or_env) do
+    %{line: line, file: file} = env = env_for_eval(opts_or_env)
+    # forms = :elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
+    forms = :elixir.string_to_quoted!(:unicode.characters_to_list(string), line, 1, file, [])
+    {value, binding, _env} = eval_verify(:eval_forms, [forms, binding, env])
+    {value, binding}
+  end
+
+  defp eval_verify(fun, args) do
+    Module.ParallelChecker.verify(fn ->
+      apply(:elixir, fun, args)
+    end)
+  end
+
+
 end
