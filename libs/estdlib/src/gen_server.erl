@@ -434,6 +434,7 @@ call(ServerRef, Request) ->
 call(Name, Request, TimeoutMs) when is_atom(Name) ->
     case erlang:whereis(Name) of
         undefined ->
+            erlang:display(Name),
             erlang:exit({noproc, {?MODULE, ?FUNCTION_NAME, [Name, Request]}});
         Pid when is_pid(Pid) ->
             call(Pid, Request, TimeoutMs)

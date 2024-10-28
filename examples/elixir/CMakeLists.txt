@@ -26,3 +26,6 @@ add_subdirectory(esp32)
 add_subdirectory(stm32)
 
 pack_runnable(HelloWorld HelloWorld estdlib eavmlib exavmlib)
+pack_runnable(CompilerTest CompilerTest estdlib eavmlib exavmlib)
+pack_runnable(TokenizerTestWeb TokenizerTestWeb estdlib eavmlib exavmlib)
+pack_runnable(EvalTestWeb EvalTestWeb estdlib eavmlib exavmlib)

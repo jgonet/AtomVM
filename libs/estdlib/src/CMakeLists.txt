@@ -28,6 +28,9 @@ set(ERLANG_MODULES
     calendar
     code
     crypto
+    erl_anno
+    erl_features
+    erl_scan
     erts_debug
     ets
     gen_event
@@ -58,6 +61,50 @@ set(ERLANG_MODULES
     timer
     unicode
     erlang
+    elixir
+    elixir
+    elixir_aliases
+    elixir_bitstring
+    elixir_bootstrap
+    elixir_clauses
+    elixir_code_server
+    elixir_compiler
+    elixir_config
+    elixir_def
+    elixir_dispatch
+    elixir_env
+    elixir_erl
+    elixir_erl_clauses
+    elixir_erl_compiler
+    elixir_erl_for
+    elixir_erl_pass
+    elixir_erl_try
+    elixir_erl_var
+    elixir_errors
+    elixir_expand
+    elixir_fn
+    elixir_import
+    elixir_interpolation
+    elixir_lexical
+    elixir_locals
+    elixir_map
+    elixir_module
+    elixir_overridable
+    elixir_parser
+    elixir_quote
+    elixir_rewrite
+    elixir_sup
+    elixir_tokenizer
+    elixir_tokenizer
+    elixir_utils
+    erl_eval
+    erl_internal
+    eval_bits
+    ordsets
+    application
+    application_controller
+    file
+    init
 )
 
 pack_archive(estdlib ${ERLANG_MODULES})

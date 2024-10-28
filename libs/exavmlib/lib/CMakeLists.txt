@@ -24,6 +24,7 @@ include(BuildElixir)
 
 set(ELIXIR_MODULES
     AVMPort
+    Base
     Bitwise
     Code
     Console
@@ -34,6 +35,7 @@ set(ELIXIR_MODULES
     Access
     Enum
     Enumerable
+    Application
     Enumerable.List
     Enumerable.Map
     Enumerable.MapSet
@@ -41,17 +43,22 @@ set(ELIXIR_MODULES
     Exception
     IO
     List
+    Path
     Map
     MapSet
     Module
     Keyword
     Kernel
+    Kernel.LexicalTracker
+    Module.ParallelChecker
+    String.Tokenizer
     Process
     Protocol.UndefinedError
     Range
     System
     Tuple
-
+    Macro.Env
+    File
     ArithmeticError
     ArgumentError
     BadFunctionError

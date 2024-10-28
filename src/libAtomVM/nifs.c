@@ -101,7 +101,7 @@ static term nif_erlang_atom_to_binary(Context *ctx, int argc, term argv[]);
 static term nif_erlang_atom_to_list_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_binary_to_atom_2(Context *ctx, int argc, term argv[]);
 static term nif_erlang_binary_to_float_1(Context *ctx, int argc, term argv[]);
-static term nif_erlang_binary_to_integer_1(Context *ctx, int argc, term argv[]);
+static term nif_erlang_binary_to_integer(Context *ctx, int argc, term argv[]);
 static term nif_erlang_binary_to_list_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_binary_to_existing_atom_2(Context *ctx, int argc, term argv[]);
 static term nif_erlang_concat_2(Context *ctx, int argc, term argv[]);
@@ -120,7 +120,7 @@ static term nif_erlang_link(Context *ctx, int argc, term argv[]);
 static term nif_erlang_float_to_binary(Context *ctx, int argc, term argv[]);
 static term nif_erlang_float_to_list(Context *ctx, int argc, term argv[]);
 static term nif_erlang_list_to_binary_1(Context *ctx, int argc, term argv[]);
-static term nif_erlang_list_to_integer_1(Context *ctx, int argc, term argv[]);
+static term nif_erlang_list_to_integer(Context *ctx, int argc, term argv[]);
 static term nif_erlang_list_to_float_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_list_to_atom_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_list_to_existing_atom_1(Context *ctx, int argc, term argv[]);
@@ -140,6 +140,7 @@ static term nif_erlang_tuple_to_list_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_list_to_tuple_1(Context *ctx, int argc, term argv[]);
 static term nif_erlang_universaltime_0(Context *ctx, int argc, term argv[]);
 static term nif_erlang_localtime(Context *ctx, int argc, term argv[]);
+static term nif_erlang_unique_integer(Context *ctx, int argc, term argv[]);
 static term nif_erlang_timestamp_0(Context *ctx, int argc, term argv[]);
 static term nif_erts_debug_flat_size(Context *ctx, int argc, term argv[]);
 static term nif_erlang_process_flag(Context *ctx, int argc, term argv[]);
@@ -155,7 +156,8 @@ static term nif_erlang_raise(Context *ctx, int argc, term argv[]);
 static term nif_ets_new(Context *ctx, int argc, term argv[]);
 static term nif_ets_insert(Context *ctx, int argc, term argv[]);
 static term nif_ets_lookup(Context *ctx, int argc, term argv[]);
-static term nif_ets_lookup_element(Context *ctx, int argc, term argv[]);
+static term nif_ets_lookup_element_3(Context *ctx, int argc, term argv[]);
+static term nif_ets_lookup_element_4(Context *ctx, int argc, term argv[]);
 static term nif_ets_delete(Context *ctx, int argc, term argv[]);
 static term nif_erlang_pid_to_list(Context *ctx, int argc, term argv[]);
 static term nif_erlang_ref_to_list(Context *ctx, int argc, term argv[]);
@@ -284,7 +286,7 @@ static const struct Nif binary_to_float_nif =
 static const struct Nif binary_to_integer_nif =
 {
     .base.type = NIFFunctionType,
-    .nif_ptr = nif_erlang_binary_to_integer_1
+    .nif_ptr = nif_erlang_binary_to_integer
 };
 
 static const struct Nif binary_to_list_nif =
@@ -386,7 +388,7 @@ static const struct Nif list_to_binary_nif =
 static const struct Nif list_to_integer_nif =
 {
     .base.type = NIFFunctionType,
-    .nif_ptr = nif_erlang_list_to_integer_1
+    .nif_ptr = nif_erlang_list_to_integer
 };
 
 static const struct Nif list_to_float_nif =
@@ -495,6 +497,12 @@ static const struct Nif localtime_nif =
 {
     .base.type = NIFFunctionType,
     .nif_ptr = nif_erlang_localtime
+};
+
+static const struct Nif unique_integer_nif =
+{
+    .base.type = NIFFunctionType,
+    .nif_ptr = nif_erlang_unique_integer
 };
 
 static const struct Nif timestamp_nif =
@@ -677,10 +685,16 @@ static const struct Nif ets_lookup_nif =
     .nif_ptr = nif_ets_lookup
 };
 
-static const struct Nif ets_lookup_element_nif =
+static const struct Nif ets_lookup_element_3_nif =
 {
     .base.type = NIFFunctionType,
-    .nif_ptr = nif_ets_lookup_element
+    .nif_ptr = nif_ets_lookup_element_3
+};
+
+static const struct Nif ets_lookup_element_4_nif =
+{
+    .base.type = NIFFunctionType,
+    .nif_ptr = nif_ets_lookup_element_4
 };
 
 static const struct Nif ets_delete_nif =
@@ -842,6 +856,11 @@ DEFINE_MATH_NIF(tanh)
 #define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) (expr)
 #else
 #define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) NULL
+#endif
+#if HAVE_OPENDIR && HAVE_READDIR && HAVE_CLOSEDIR
+#define IF_HAVE_OPENDIR_READDIR_CLOSEDIR(expr) (expr)
+#else
+#define IF_HAVE_OPENDIR_READDIR_CLOSEDIR(expr) NULL
 #endif
 
 //Ignore warning caused by gperf generated code
@@ -1503,6 +1522,14 @@ term nif_erlang_make_ref_0(Context *ctx, int argc, term argv[])
     return term_from_ref_ticks(ref_ticks, &ctx->heap);
 }
 
+term nif_erlang_unique_integer(Context *ctx, int argc, term argv[]) {
+    UNUSED(ctx);
+    UNUSED(argc);
+    UNUSED(argv);
+    srand(time(NULL));
+    return term_from_int(rand());
+}
+
 term nif_erlang_monotonic_time_1(Context *ctx, int argc, term argv[])
 {
     UNUSED(ctx);
@@ -1863,10 +1890,8 @@ static term nif_erlang_binary_to_atom_2(Context *ctx, int argc, term argv[])
     return binary_to_atom(ctx, argc, argv, 1);
 }
 
-static term nif_erlang_binary_to_integer_1(Context *ctx, int argc, term argv[])
+static term nif_erlang_binary_to_integer(Context *ctx, int argc, term argv[])
 {
-    UNUSED(argc);
-
     term bin_term = argv[0];
     VALIDATE_VALUE(bin_term, term_is_binary);
 
@@ -1877,14 +1902,26 @@ static term nif_erlang_binary_to_integer_1(Context *ctx, int argc, term argv[])
         RAISE_ERROR(BADARG_ATOM);
     }
 
-    char null_terminated_buf[24];
+    uint8_t base = 10;
+
+    if (argc == 2) {
+        term int_term = argv[1];
+        VALIDATE_VALUE(int_term, term_is_uint8);
+        base = term_to_uint8(int_term);
+    }
+
+    if (UNLIKELY((base < 2) || (base > 36))) {
+        RAISE_ERROR(BADARG_ATOM);
+    }
+
+    char null_terminated_buf[65];
     memcpy(null_terminated_buf, bin_data, bin_data_size);
     null_terminated_buf[bin_data_size] = '\0';
 
-    //TODO: handle 64 bits numbers
     //TODO: handle errors
+    //TODO: do not copy buffer, implement a custom strotoll
     char *endptr;
-    uint64_t value = strtoll(null_terminated_buf, &endptr, 10);
+    uint64_t value = strtoll(null_terminated_buf, &endptr, base);
     if (*endptr != '\0') {
         RAISE_ERROR(BADARG_ATOM);
     }
@@ -2544,9 +2581,30 @@ static term nif_erlang_list_to_binary_1(Context *ctx, int argc, term argv[])
     return bin_res;
 }
 
-static term nif_erlang_list_to_integer_1(Context *ctx, int argc, term argv[])
+static avm_int_t to_digit_index(avm_int_t character)
 {
-    UNUSED(argc);
+    if (character >= '0' && character <= '9') {
+        return character - '0';
+    } else if (character >= 'a' && character <= 'z') {
+        return character - 'a' + 10;
+    } else if (character >= 'A' && character <= 'Z') {
+        return character - 'A' + 10;
+    } else {
+        return -1;
+    }
+}
+
+static term nif_erlang_list_to_integer(Context *ctx, int argc, term argv[])
+{
+    avm_int_t base = 10;
+    if (argc == 2) {
+        term t = argv[1];
+        VALIDATE_VALUE(t, term_is_integer);
+        base = term_to_int(t);
+        if (UNLIKELY(base < 2 || base > 36)) {
+            RAISE_ERROR(BADARG_ATOM);
+        }
+    }
 
     term t = argv[0];
     int64_t acc = 0;
@@ -2565,22 +2623,21 @@ static term nif_erlang_list_to_integer_1(Context *ctx, int argc, term argv[])
 
     while (term_is_nonempty_list(t)) {
         term head = term_get_list_head(t);
-
         VALIDATE_VALUE(head, term_is_integer);
-
         avm_int_t c = term_to_int(head);
 
-        if (UNLIKELY((c < '0') || (c > '9'))) {
+        avm_int_t digit = to_digit_index(c);
+        if (UNLIKELY(digit == -1 || digit >= base)) {
             RAISE_ERROR(BADARG_ATOM);
         }
 
-        //TODO: fix this
-        if (acc > INT64_MAX / 10) {
+        // TODO: fix this
+        if (acc > INT64_MAX / base) {
             // overflow error is not standard, but we need it since we are running on an embedded device
             RAISE_ERROR(OVERFLOW_ATOM);
         }
 
-        acc = (acc * 10) + (c - '0');
+        acc = (acc * base) + digit;
         digits++;
         t = term_get_list_tail(t);
         if (!term_is_list(t)) {
@@ -3277,25 +3334,56 @@ static term nif_ets_insert(Context *ctx, int argc, term argv[])
     VALIDATE_VALUE(ref, is_ets_table_id);
 
     term entry = argv[1];
-    VALIDATE_VALUE(entry, term_is_tuple);
-    if (term_get_tuple_arity(entry) < 1) {
+
+    if (term_is_list(entry)) {
+        term list = entry;
+        while (!term_is_nil(list)) {
+            term head = term_get_list_head(list);
+            VALIDATE_VALUE(head, term_is_tuple);
+            if (term_get_tuple_arity(head) < 1) {
+                RAISE_ERROR(BADARG_ATOM);
+            }
+
+            EtsErrorCode result = ets_insert(ref, head, ctx);
+            if (result != EtsOk) {
+                switch (result) {
+                    case EtsTableNotFound:
+                    case EtsBadEntry:
+                    case EtsPermissionDenied:
+                        RAISE_ERROR(BADARG_ATOM);
+                    case EtsAllocationFailure:
+                        RAISE_ERROR(MEMORY_ATOM);
+                    default:
+                        AVM_ABORT();
+                }
+            }
+
+            list = term_get_list_tail(list);
+        }
+        return TRUE_ATOM;
+    } else if (term_is_tuple(entry)) {
+        if (term_get_tuple_arity(entry) < 1) {
+            RAISE_ERROR(BADARG_ATOM);
+        }
+
+        EtsErrorCode result = ets_insert(ref, entry, ctx);
+        switch (result) {
+            case EtsOk:
+                return TRUE_ATOM;
+            case EtsTableNotFound:
+            case EtsBadEntry:
+            case EtsPermissionDenied:
+                RAISE_ERROR(BADARG_ATOM);
+            case EtsAllocationFailure:
+                RAISE_ERROR(MEMORY_ATOM);
+            default:
+                AVM_ABORT();
+        }
+    } else {
         RAISE_ERROR(BADARG_ATOM);
     }
-
-    EtsErrorCode result = ets_insert(ref, entry, ctx);
-    switch (result) {
-        case EtsOk:
-            return TRUE_ATOM;
-        case EtsTableNotFound:
-        case EtsBadEntry:
-        case EtsPermissionDenied:
-            RAISE_ERROR(BADARG_ATOM);
-        case EtsAllocationFailure:
-            RAISE_ERROR(MEMORY_ATOM);
-        default:
-            AVM_ABORT();
-    }
 }
+
 
 static term nif_ets_lookup(Context *ctx, int argc, term argv[])
 {
@@ -3321,7 +3409,7 @@ static term nif_ets_lookup(Context *ctx, int argc, term argv[])
     }
 }
 
-static term nif_ets_lookup_element(Context *ctx, int argc, term argv[])
+static term nif_ets_lookup_element_3(Context *ctx, int argc, term argv[])
 {
     UNUSED(argc);
 
@@ -3342,6 +3430,35 @@ static term nif_ets_lookup_element(Context *ctx, int argc, term argv[])
         case EtsTableNotFound:
         case EtsPermissionDenied:
             RAISE_ERROR(BADARG_ATOM);
+        case EtsAllocationFailure:
+            RAISE_ERROR(MEMORY_ATOM);
+        default:
+            AVM_ABORT();
+    }
+}
+
+static term nif_ets_lookup_element_4(Context *ctx, int argc, term argv[])
+{
+    UNUSED(argc);
+
+    term ref = argv[0];
+    VALIDATE_VALUE(ref, is_ets_table_id);
+
+    term key = argv[1];
+    term pos = argv[2];
+    VALIDATE_VALUE(pos, term_is_integer);
+    term def = argv[3];
+
+    term ret = term_invalid_term();
+    EtsErrorCode result = ets_lookup_element(ref, key, term_to_int(pos), &ret, ctx);
+    switch (result) {
+        case EtsOk:
+            return ret;
+        case EtsEntryNotFound:
+        case EtsBadPosition:
+        case EtsTableNotFound:
+        case EtsPermissionDenied:
+            return def;
         case EtsAllocationFailure:
             RAISE_ERROR(MEMORY_ATOM);
         default:

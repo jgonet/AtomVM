@@ -60,7 +60,9 @@
     split/2,
     usort/1, usort/2,
     duplicate/2,
-    sublist/2
+    sublist/2,
+    takewhile/2,
+    dropwhile/2
 ]).
 
 %%-----------------------------------------------------------------------------
@@ -432,6 +434,55 @@ mapfoldl0(Fun, {List1, Acc0}, [H | T]) ->
 ) -> Acc1 :: term().
 foldr(Fun, Acc0, List) ->
     foldl(Fun, Acc0, ?MODULE:reverse(List)).
+
+%%-----------------------------------------------------------------------------
+%% @param   Pred the predicate to evaluate, must return boolean
+%% @param   List the list over which to take elements from
+%% @returns List of the longest prefix of the list for which all elements
+%% satisfy the predicate
+%% @doc     Takes elements `Elem` from `List1` while `Pred(Elem)` returns `true`.
+%% @end
+%%-----------------------------------------------------------------------------
+-spec takewhile(Pred, List1) -> List2 when
+      Pred :: fun((Elem :: T) -> boolean()),
+      List1 :: [T],
+      List2 :: [T],
+      T :: term().
+
+takewhile(Pred, List) when is_function(Pred, 1) ->
+    takewhile_1(Pred, List).
+
+takewhile_1(Pred, [Hd | Tail]) ->
+    case Pred(Hd) of
+        true -> [Hd | takewhile_1(Pred, Tail)];
+        false -> []
+    end;
+takewhile_1(_Pred, []) ->
+    [].
+
+%%-----------------------------------------------------------------------------
+%% @param   Pred the predicate to evaluate, must return boolean
+%% @param   List the list over which to frop elements from
+%% @returns List containing elements that the Pred(elem) == false
+%% @doc     Drops elements `Elem` from `List1` while `Pred(Elem)` returns `true`.
+%% @end
+%%-----------------------------------------------------------------------------
+-spec dropwhile(Pred, List1) -> List2 when
+      Pred :: fun((Elem :: T) -> boolean()),
+      List1 :: [T],
+      List2 :: [T],
+      T :: term().
+
+dropwhile(Pred, List) when is_function(Pred, 1) ->
+    dropwhile_1(Pred, List).
+
+dropwhile_1(Pred, [Hd | Tail]=Rest) ->
+    case Pred(Hd) of
+        true -> dropwhile_1(Pred, Tail);
+        false -> Rest
+    end;
+dropwhile_1(_Pred, []) ->
+    [].
 
 %%-----------------------------------------------------------------------------
 %% @param   Fun the predicate to evaluate
