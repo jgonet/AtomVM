@@ -108,7 +108,7 @@ defmodule Module.ParallelChecker do
       :undefined ->
         previous = :erlang.put(:elixir_checker_info, {self(), nil})
 
-        # try do
+        try do
           result = fun.()
 
           case :erlang.get(:elixir_checker_info) do
@@ -117,7 +117,7 @@ defmodule Module.ParallelChecker do
           end
 
           result
-        # after
+        after
           {_, checker} = :erlang.get(:elixir_checker_info)
 
           if previous != :undefined do
@@ -127,8 +127,7 @@ defmodule Module.ParallelChecker do
           end
 
           checker && stop(checker)
-          result
-        # end
+        end
 
       _ ->
         # If we are during compilation, then they will be
@@ -283,10 +282,11 @@ defmodule Module.ParallelChecker do
   end
 
   defp merge_compiler_no_warn_undefined(no_warn_undefined) do
-    case Code.get_compiler_option(:no_warn_undefined) do
-      :all -> :all
-      list when is_list(list) -> no_warn_undefined ++ list
-    end
+    # case Code.get_compiler_option(:no_warn_undefined) do
+      # :all -> :all
+    #   list when is_list(list) -> no_warn_undefined ++ list
+    # end
+    :all
   end
 
   ## Warning helpers
