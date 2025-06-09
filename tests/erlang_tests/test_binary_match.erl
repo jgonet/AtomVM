@@ -24,15 +24,19 @@
 -define(ID(Arg), ?MODULE:id(Arg)).
 
 start() ->
-    nomatch = binary:match(?ID(<<"">>), ?ID(<<"">>)),
-    nomatch = binary:match(?ID(<<"">>), ?ID(<<"a">>)),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"">>)) end),
     {0, 1} = binary:match(?ID(<<"a">>), ?ID(<<"a">>)),
     {0, 1} = binary:match(?ID(<<"aa">>), ?ID(<<"a">>)),
     {0, 2} = binary:match(?ID(<<"aba">>), ?ID(<<"ab">>)),
 
-    % list of patterns
+    % empty subject
+    nomatch = binary:match(?ID(<<"">>), ?ID(<<"">>)),
+    nomatch = binary:match(?ID(<<"">>), ?ID(<<"a">>)),
     nomatch = binary:match(?ID(<<"">>), ?ID([])),
+    % for /3, nomatch only if empty subject + empty options
+    nomatch = binary:match(?ID(<<"">>), ?ID(not_binary), ?ID([])),
+
+    % list of patterns
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID([])) end),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID([<<"">>])) end),
     {0, 1} = binary:match(?ID(<<"a">>), ?ID([<<"a">>])),
@@ -47,9 +51,15 @@ start() ->
     % {scope, {1, -1}}: starts at 0, 1 byte long
     {0, 1} = binary:match(?ID(<<"bab">>), ?ID(<<"b">>), ?ID([{scope, {1, -1}}])),
 
+    % bad inputs, subjects must be non-empty to not short-circuit
     ok = fail_with_badarg(fun() -> binary:match(?ID(not_binary), ?ID(<<"a">>)) end),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(not_binary)) end),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID([<<"a">> | <<"a">>])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(not_binary), ?ID(<<"a">>), ?ID([])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(not_binary), ?ID([])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID(not_list)) end),
+
+    % bad scope
     ok = fail_with_badarg(fun() ->
         binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID([{scope, {0, 2}}]))
     end),
