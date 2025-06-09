@@ -59,10 +59,14 @@ get_non_networking_tests(OTPVersion) when
     (is_integer(OTPVersion) andalso OTPVersion >= 27) orelse OTPVersion =:= atomvm
 ->
     [test_sets | get_non_networking_tests(undefined)];
+% test_binary uses encode_hex/1, /2 from OTP-24
+get_non_networking_tests(OTPVersion) when
+    (is_integer(OTPVersion) andalso OTPVersion >= 24) orelse OTPVersion =:= atomvm
+->
+    [test_binary | get_non_networking_tests(undefined)];
 get_non_networking_tests(_OTPVersion) ->
     [
         test_apply,
-        test_binary,
         test_lists,
         test_calendar,
         test_gen_event,
