@@ -24,7 +24,7 @@
 -define(ID(Arg), ?MODULE:id(Arg)).
 
 start() ->
-    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"">>), ?ID(<<"">>)) end),
+    nomatch = binary:match(?ID(<<"">>), ?ID(<<"">>)),
     nomatch = binary:match(?ID(<<"">>), ?ID(<<"a">>)),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"">>)) end),
     {0, 1} = binary:match(?ID(<<"a">>), ?ID(<<"a">>)),
@@ -32,7 +32,7 @@ start() ->
     {0, 2} = binary:match(?ID(<<"aba">>), ?ID(<<"ab">>)),
 
     % list of patterns
-    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"">>), ?ID([])) end),
+    nomatch = binary:match(?ID(<<"">>), ?ID([])),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID([])) end),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID([<<"">>])) end),
     {0, 1} = binary:match(?ID(<<"a">>), ?ID([<<"a">>])),
