@@ -30,11 +30,19 @@ start() ->
     {0, 2} = binary:match(?ID(<<"aba">>), ?ID(<<"ab">>)),
 
     % empty subject
-    nomatch = binary:match(?ID(<<"">>), ?ID(<<"">>)),
-    nomatch = binary:match(?ID(<<"">>), ?ID(<<"a">>)),
-    nomatch = binary:match(?ID(<<"">>), ?ID([])),
-    % for /3, nomatch only if empty subject + empty options
-    nomatch = binary:match(?ID(<<"">>), ?ID(not_binary), ?ID([])),
+    case get_otp_version() of
+        OTP when OTP =< 26 ->
+            nomatch = binary:match(?ID(<<"">>), ?ID(<<"">>)),
+            nomatch = binary:match(?ID(<<"">>), ?ID(<<"a">>)),
+            nomatch = binary:match(?ID(<<"">>), ?ID([])),
+            % for /3, nomatch only if empty subject + empty options
+            nomatch = binary:match(?ID(<<"">>), ?ID(not_binary), ?ID([]));
+        _AVM_or_newer_OTP ->
+            ok = fail_with_badarg(fun() -> binary:match(?ID(<<"">>), ?ID(<<"">>)) end),
+            nomatch = binary:match(?ID(<<"">>), ?ID(<<"a">>)),
+            ok = fail_with_badarg(fun() -> binary:match(?ID(<<"">>), ?ID([])) end),
+            ok = fail_with_badarg(fun() -> binary:match(?ID(<<"">>), ?ID(not_binary), ?ID([])) end)
+    end,
 
     % list of patterns
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID([])) end),
@@ -80,4 +88,12 @@ fail_with_badarg(Fun) ->
     catch
         error:badarg -> ok;
         C:E -> {unexpected, C, E}
+    end.
+
+get_otp_version() ->
+    case erlang:system_info(machine) of
+        "BEAM" ->
+            list_to_integer(erlang:system_info(otp_release));
+        _ ->
+            atomvm
     end.

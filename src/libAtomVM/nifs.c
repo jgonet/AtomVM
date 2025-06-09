@@ -3370,11 +3370,6 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
     
     VALIDATE_VALUE(binary_term, term_is_binary);
     VALIDATE_VALUE(options_term, term_is_list);
-    // To match BEAM implementation, we short-circuit when passing empty subject
-    bool empty_binary = term_binary_size(binary_term) == 0;
-    if (empty_binary) {
-        return NOMATCH_ATOM;
-    }
     VALIDATE_VALUE(pattern_or_patterns_term, is_valid_pattern);
 
     BinaryPosLen scope_slice;
