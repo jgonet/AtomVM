@@ -3279,9 +3279,9 @@ static term nif_binary_split(Context *ctx, int argc, term argv[])
     return result_list;
 }
 
-static bool get_binary_scope_slice(term binary, term options, term scope_atom, BinaryPosLen *scope_slice)
+static bool get_binary_scope_slice(term binary, term options, BinaryPosLen *scope_slice)
 {
-    term scope_opt = interop_proplist_get_value_default(options, scope_atom, term_invalid_term());
+    term scope_opt = interop_proplist_get_value_default(options, SCOPE_ATOM, term_invalid_term());
     if (term_is_invalid_term(scope_opt)) {
         size_t size = term_binary_size(binary);
         return term_normalize_binary_pos_len(binary, 0, (avm_int_t) size, scope_slice);
@@ -3364,8 +3364,6 @@ static BinaryPosLen select_earlier_slice(BinaryPosLen old_slice, BinaryPosLen ne
 
 static term nif_binary_match(Context *ctx, int argc, term argv[])
 {
-    term scope_atom = globalcontext_make_atom(ctx->global, ATOM_STR("\x5", "scope"));
-    term nomatch_atom = globalcontext_make_atom(ctx->global, ATOM_STR("\x7", "nomatch"));
     term binary_term = argv[0];
     term pattern_or_patterns_term = argv[1];
     term options_term = argc == 3 ? argv[2] : term_nil();
@@ -3375,7 +3373,7 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
     VALIDATE_VALUE(pattern_or_patterns_term, is_valid_pattern);
 
     BinaryPosLen scope_slice;
-    if (UNLIKELY(!get_binary_scope_slice(binary_term, options_term, scope_atom, &scope_slice))) {
+    if (UNLIKELY(!get_binary_scope_slice(binary_term, options_term, &scope_slice))) {
         RAISE_ERROR(BADARG_ATOM);
     }
 
@@ -3394,7 +3392,7 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
     }
 
     if (term_is_invalid_binary_pos_len(match_slice)) {
-        return nomatch_atom;
+        return NOMATCH_ATOM;
     }
 
     if (UNLIKELY(memory_ensure_free_opt(ctx, TUPLE_SIZE(2), MEMORY_CAN_SHRINK) != MEMORY_GC_OK)) {
