@@ -3336,7 +3336,7 @@ static BinaryPosLen find_pattern_in_binary(term binary_term, BinaryPosLen scope_
     const char *pattern = term_binary_data(pattern_term);
     size_t pattern_size = term_binary_size(pattern_term);
 
-    BinaryPosLen pattern_slice = term_invalid_binary_pos_len();
+    BinaryPosLen pattern_slice = term_nomatch_binary_pos_len();
     const char *sub_binary = memmem(binary, size, pattern, pattern_size);
     if (sub_binary != NULL) {
         pattern_slice.len = pattern_size;
@@ -3347,10 +3347,10 @@ static BinaryPosLen find_pattern_in_binary(term binary_term, BinaryPosLen scope_
 
 static BinaryPosLen select_earlier_slice(BinaryPosLen old_slice, BinaryPosLen new_slice)
 {
-    if (term_is_invalid_binary_pos_len(new_slice)) {
+    if (term_is_nomatch_binary_pos_len(new_slice)) {
         return old_slice;
     }
-    if (term_is_invalid_binary_pos_len(old_slice)) {
+    if (term_is_nomatch_binary_pos_len(old_slice)) {
         return new_slice;
     }
     if (new_slice.pos < old_slice.pos) {
@@ -3377,13 +3377,13 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
         RAISE_ERROR(BADARG_ATOM);
     }
 
-    BinaryPosLen match_slice = term_invalid_binary_pos_len();
+    BinaryPosLen match_slice = term_nomatch_binary_pos_len();
     if (term_is_binary(pattern_or_patterns_term)) {
         term pattern_term = pattern_or_patterns_term;
         match_slice = find_pattern_in_binary(binary_term, scope_slice, pattern_term);
     } else {
         term patterns = pattern_or_patterns_term;
-        while (!term_is_nil(patterns)) {
+        while (term_is_nonempty_list(patterns)) {
             term pattern_term = term_get_list_head(patterns);
             BinaryPosLen new_match_slice = find_pattern_in_binary(binary_term, scope_slice, pattern_term);
             match_slice = select_earlier_slice(match_slice, new_match_slice);
@@ -3391,7 +3391,7 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
         }
     }
 
-    if (term_is_invalid_binary_pos_len(match_slice)) {
+    if (term_is_nomatch_binary_pos_len(match_slice)) {
         return NOMATCH_ATOM;
     }
 
@@ -3399,8 +3399,8 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
         RAISE_ERROR(OUT_OF_MEMORY_ATOM);
     }
     term result_tuple = term_alloc_tuple(2, &ctx->heap);
-    term_put_tuple_element(result_tuple, 0, term_from_int32(match_slice.pos));
-    term_put_tuple_element(result_tuple, 1, term_from_int32(match_slice.len));
+    term_put_tuple_element(result_tuple, 0, term_from_int(match_slice.pos));
+    term_put_tuple_element(result_tuple, 1, term_from_int(match_slice.len));
     return result_tuple;
 }
 
