@@ -3367,8 +3367,15 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
     term binary_term = argv[0];
     term pattern_or_patterns_term = argv[1];
     term options_term = argc == 3 ? argv[2] : term_nil();
-
+    
     VALIDATE_VALUE(binary_term, term_is_binary);
+
+    // To match BEAM implementation:
+    // - match/2 short-circuits empty binary before checking other args
+    // - match/3 always checks all args
+    if(argc == 2 && term_binary_size(binary_term) == 0) { 
+        return NOMATCH_ATOM;
+    }
     VALIDATE_VALUE(options_term, term_is_list);
     VALIDATE_VALUE(pattern_or_patterns_term, is_valid_pattern);
 
