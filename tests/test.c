@@ -646,7 +646,7 @@ static int test_beam(struct Test *test)
         test->test_module,
         test->expected_value,
         test->expected_value);
-    if (written >= sizeof(command)-1) {
+    if (written >= sizeof(command) - 1) {
         fprintf(stderr, "Exceeded buffer size for module %s\n", test->test_module);
         return 1;
     }
