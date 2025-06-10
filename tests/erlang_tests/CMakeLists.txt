@@ -77,13 +77,6 @@ compile_erlang(state_test2)
 compile_erlang(state_test2_sender)
 compile_erlang(state_test3)
 compile_erlang(state_test3_server)
-compile_erlang(guards1)
-compile_erlang(guards2)
-compile_erlang(guards3)
-compile_erlang(guards4)
-compile_erlang(guards5)
-compile_erlang(test_guards_do_not_raise)
-compile_erlang(test_min_max_guard)
 compile_erlang(prime)
 compile_erlang(match)
 compile_erlang(if_test)
@@ -294,7 +287,6 @@ compile_erlang(int28mulneg)
 compile_erlang(int28mulneg2)
 compile_erlang(int28mulneg2)
 compile_erlang(negdiv)
-compile_erlang(absovf)
 compile_erlang(negovf)
 compile_erlang(unary_plus)
 
@@ -303,7 +295,6 @@ compile_erlang(plusone4)
 compile_erlang(bigfact)
 compile_erlang(bigfact2)
 compile_erlang(bigfact3)
-compile_erlang(boxedabs)
 compile_erlang(boxedneg)
 compile_erlang(boxedmul)
 compile_erlang(boxedlit)
@@ -385,7 +376,6 @@ compile_erlang(floatsubovf)
 compile_erlang(floatmul)
 compile_erlang(floatmulovf)
 compile_erlang(floatneg)
-compile_erlang(floatabs)
 compile_erlang(floatdiv)
 compile_erlang(floatmath)
 compile_erlang(floatext)
@@ -529,6 +519,9 @@ compile_erlang(test_raw_raise)
 compile_erlang(test_ets)
 compile_erlang(test_node)
 
+compile_erlang(bif_abs)
+compile_erlang(vm_guards)
+
 add_custom_target(erlang_test_modules DEPENDS
     code_load_files
 
@@ -566,13 +559,6 @@ add_custom_target(erlang_test_modules DEPENDS
     state_test2_sender.beam
     state_test3.beam
     state_test3_server.beam
-    guards1.beam
-    guards2.beam
-    guards3.beam
-    guards4.beam
-    guards5.beam
-    test_guards_do_not_raise.beam
-    test_min_max_guard.beam
     prime.beam
     match.beam
     if_test.beam
@@ -782,7 +768,6 @@ add_custom_target(erlang_test_modules DEPENDS
     int28mulneg.beam
     int28mulneg2.beam
     negdiv.beam
-    absovf.beam
     negovf.beam
     unary_plus.beam
 
@@ -791,7 +776,6 @@ add_custom_target(erlang_test_modules DEPENDS
     bigfact.beam
     bigfact2.beam
     bigfact3.beam
-    boxedabs.beam
     boxedneg.beam
     boxedmul.beam
     boxedlit.beam
@@ -875,7 +859,6 @@ add_custom_target(erlang_test_modules DEPENDS
     floatmul.beam
     floatmulovf.beam
     floatneg.beam
-    floatabs.beam
     floatdiv.beam
     floatmath.beam
     floatext.beam
@@ -1022,4 +1005,7 @@ add_custom_target(erlang_test_modules DEPENDS
 
     test_ets.beam
     test_node.beam
+
+    bif_abs.beam
+    vm_guards.beam
 )

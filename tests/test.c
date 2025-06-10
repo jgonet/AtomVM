@@ -129,14 +129,6 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(moda, 44),
     TEST_CASE_EXPECTED(state_test2, 3),
     TEST_CASE_EXPECTED(state_test3, 3),
-    TEST_CASE_EXPECTED(guards1, 261),
-    TEST_CASE_EXPECTED(guards2, 36),
-    // This tests depends on echo port, but it works sufficiently on Unix
-    // as BEAM will start echo(1)
-    TEST_CASE_EXPECTED(guards3, 405),
-    TEST_CASE_EXPECTED(guards4, 16),
-    TEST_CASE_EXPECTED(guards5, 3),
-    TEST_CASE(test_guards_do_not_raise),
     TEST_CASE_EXPECTED(prime, 1999),
     TEST_CASE_COND(prime_smp, 0, SKIP_SMP),
     TEST_CASE_EXPECTED(match, 5),
@@ -335,7 +327,6 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(int28mulneg, -268435456),
     TEST_CASE_EXPECTED(int28mulneg2, 268435448),
     TEST_CASE_EXPECTED(negdiv, 134217728),
-    TEST_CASE_EXPECTED(absovf, 134217728),
     TEST_CASE_EXPECTED(negovf, 134217728),
     TEST_CASE(unary_plus),
 
@@ -344,7 +335,6 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(bigfact, 1860480),
     TEST_CASE_EXPECTED(bigfact2, 189907211),
     TEST_CASE_EXPECTED(bigfact3, 3078559),
-    TEST_CASE_EXPECTED(boxedabs, 15),
     TEST_CASE_EXPECTED(boxedneg, 15),
     TEST_CASE_EXPECTED(boxedmul, 15),
     TEST_CASE_EXPECTED(boxedlit, 1073741824),
@@ -436,7 +426,6 @@ struct Test tests[] = {
     TEST_CASE(floatmulovf),
     TEST_CASE(floatmul),
     TEST_CASE(floatneg),
-    TEST_CASE_EXPECTED(floatabs, 3),
     TEST_CASE(floatdiv),
 
     TEST_CASE_EXPECTED(boxed_is_not_float, 16),
@@ -559,7 +548,6 @@ struct Test tests[] = {
     TEST_CASE_COND(test_stacktrace, 0, SKIP_STACKTRACES),
     TEST_CASE(small_big_ext),
     TEST_CASE(test_crypto),
-    TEST_CASE(test_min_max_guard),
     TEST_CASE(int64_build_binary),
     TEST_CASE(test_link_port),
 
@@ -585,6 +573,9 @@ struct Test tests[] = {
 
     TEST_CASE(test_ets),
     TEST_CASE(test_node),
+
+    TEST_CASE(bif_abs),
+    TEST_CASE(vm_guards),
 
     // TEST CRASHES HERE: TEST_CASE(memlimit),
 
