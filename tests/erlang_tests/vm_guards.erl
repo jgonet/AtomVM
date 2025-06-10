@@ -27,7 +27,11 @@
 
 start() ->
     ok = test_numbers_equalities(),
-    ok = test_raising(),
+    ok = test_raising_gc_bif1(),
+    ok = test_raising_gc_bif2(),
+    ok = test_raising_gc_bif3(),
+    ok = test_raising_bif1(),
+    ok = test_raising_bif2(),
     ok = test_min_max(),
     ok = test_types(),
     ok =
@@ -77,20 +81,13 @@ test_types() ->
     atom = guard_type(ok),
     ok.
 
-test_raising() ->
-    ok = test_gc_bif1(),
-    ok = test_gc_bif2(),
-    ok = test_gc_bif3(),
-    ok = test_bif1(),
-    ok = test_bif2(),
-    ok.
-
 test_min_max() ->
-    ok = test_guard(?ID(min, 2, 1, 2)),
-    ok = test_guard(?ID(max, 2, 1, 1)),
-    ok = test_without_guard(?ID(min, 2, 1, 2)),
-    ok = test_without_guard(?ID(max, 2, 1, 1)),
-    ok = test_tail(),
+    ok = min_max_guard(?ID(min, 2, 1, 2)),
+    ok = min_max_guard(?ID(max, 2, 1, 1)),
+    ok = min_max_case(?ID(min, 2, 1, 2)),
+    ok = min_max_case(?ID(max, 2, 1, 1)),
+    1 = tail_min(?ID(infinity, [5, 4, 3, 2, 1])),
+    5 = tail_max(?ID(0, [1, 2, 3, 4, 5])),
     ok.
 
 cmp_relative(A, B) when A > B -> gt;
@@ -117,21 +114,21 @@ guard_number_exact(N) when is_float(N) -> float.
 
 loop() -> loop().
 
-test_gc_bif1() ->
+test_raising_gc_bif1() ->
     NotAList = ?ID(not_a_list),
     if
         length(NotAList) < 42 -> fail;
         true -> ok
     end.
 
-test_gc_bif2() ->
+test_raising_gc_bif2() ->
     NotAnInteger = ?ID(not_an_integer),
     if
         NotAnInteger rem 42 < 20 -> fail;
         true -> ok
     end.
 
-test_gc_bif3() ->
+test_raising_gc_bif3() ->
     case erlang:function_exported(erlang, binary_part, 3) of
         true ->
             NotABin = ?ID(not_a_bin),
@@ -145,14 +142,14 @@ test_gc_bif3() ->
             ok
     end.
 
-test_bif1() ->
+test_raising_bif1() ->
     NotAList = ?ID(not_a_list),
     if
         tl(NotAList) > 1 -> fail;
         true -> ok
     end.
 
-test_bif2() ->
+test_raising_bif2() ->
     NotAMap = ?ID(not_a_map),
     if
         is_map_key(b, NotAMap) -> fail;
@@ -162,39 +159,37 @@ test_bif2() ->
 -ifdef(OTP_RELEASE).
 %% OTP 21 or higher
 -if(?OTP_RELEASE >= 26).
-test_guard(min, X, Y, Z) when min(X, Y) < Z ->
+min_max_guard(min, X, Y, Z) when min(X, Y) < Z ->
     ok;
-test_guard(max, X, Y, Z) when max(X, Y) > Z ->
+min_max_guard(max, X, Y, Z) when max(X, Y) > Z ->
     ok;
-test_guard(_Op, _X, _Y, _Z) ->
+min_max_guard(_Op, _X, _Y, _Z) ->
     fail.
 -else.
-test_guard(_Op, _X, _Y, _Z) ->
+min_max_guard(_Op, _X, _Y, _Z) ->
     ok.
 -endif.
 -else.
-test_guard(_Op, _X, _Y, _Z) ->
+min_max_guard(_Op, _X, _Y, _Z) ->
     ok.
 -endif.
 
-test_without_guard(min, X, Y, Z) ->
+% jgonet: not sure if this can be folded to Z = min(?ID(X, Y))
+% in any case, should be tested separately in bif_guards
+min_max_case(min, X, Y, Z) ->
     case min(X, Y) < Z of
         true -> ok;
         false -> fail
     end;
-test_without_guard(max, X, Y, Z) ->
+min_max_case(max, X, Y, Z) ->
     case max(X, Y) > Z of
         true -> ok;
         false -> fail
     end;
-test_without_guard(_Op, _X, _Y, _Z) ->
+min_max_case(_Op, _X, _Y, _Z) ->
     fail.
 
-test_tail() ->
-    1 = tail_min(infinity, [5, 4, 3, 2, 1]),
-    5 = tail_max(0, [1, 2, 3, 4, 5]),
-    ok.
-
+% jgonet: under new test arch tail calls should be tested separately in vm_tail_call
 tail_min(X, [Y]) ->
     % OP_CALL_EXT_ONLY
     min(X, Y);
