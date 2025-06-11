@@ -840,7 +840,7 @@ static const struct Nif erlang_lists_subtract_nif =
     .base.type = NIFFunctionType,
     .nif_ptr = nif_erlang_lists_subtract
 };
-static const struct Nif zlib_compress_nif = 
+static const struct Nif zlib_compress_nif =
 {
     .base.type = NIFFunctionType,
     .nif_ptr = nif_zlib_compress_1
@@ -2508,8 +2508,11 @@ static term nif_erlang_float_to_list(Context *ctx, int argc, term argv[])
     return make_list_from_ascii_buf((uint8_t *) float_buf, len, ctx);
 }
 
-static term list_to_binary(term list, term *ret, Context *ctx)
+static term iolist_to_buffer(term list, char **buf, size_t *size)
 {
+    *buf = NULL;
+    *size = 0;
+
     size_t bin_size;
     switch (interop_iolist_size(list, &bin_size)) {
         case InteropOk:
@@ -2520,42 +2523,29 @@ static term list_to_binary(term list, term *ret, Context *ctx)
             return BADARG_ATOM;
     }
 
-    char *bin_buf = NULL;
-    bool buf_allocated = true;
-    if (bin_size > 0) {
-        bin_buf = malloc(bin_size);
-        if (IS_NULL_PTR(bin_buf)) {
-            return OUT_OF_MEMORY_ATOM;
-        }
-
-        switch (interop_write_iolist(list, bin_buf)) {
-            case InteropOk:
-                break;
-            case InteropMemoryAllocFail:
-                free(bin_buf);
-                return OUT_OF_MEMORY_ATOM;
-            case InteropBadArg:
-                free(bin_buf);
-                return BADARG_ATOM;
-        }
-    } else {
-        bin_buf = "";
-        buf_allocated = false;
+    if (bin_size == 0) {
+        return OK_ATOM;
     }
 
-    if (UNLIKELY(memory_ensure_free(ctx, term_binary_heap_size(bin_size)) != MEMORY_GC_OK)) {
-        if (buf_allocated) {
-            free(bin_buf);
-        }
+    char *bin_buf = NULL;
+    bin_buf = malloc(bin_size * sizeof(char));
+    if (IS_NULL_PTR(bin_buf)) {
         return OUT_OF_MEMORY_ATOM;
     }
-    term bin_res = term_from_literal_binary(bin_buf, bin_size, &ctx->heap, ctx->global);
 
-    if (buf_allocated) {
-        free(bin_buf);
+    switch (interop_write_iolist(list, bin_buf)) {
+        case InteropOk:
+            break;
+        case InteropMemoryAllocFail:
+            free(bin_buf);
+            return OUT_OF_MEMORY_ATOM;
+        case InteropBadArg:
+            free(bin_buf);
+            return BADARG_ATOM;
     }
-    *ret = bin_res;
 
+    *buf = bin_buf;
+    *size = bin_size;
     return OK_ATOM;
 }
 
@@ -2565,12 +2555,31 @@ static term nif_erlang_list_to_binary_1(Context *ctx, int argc, term argv[])
 
     term t = argv[0];
     VALIDATE_VALUE(t, term_is_list);
-    term ret;
-    term result = list_to_binary(t, &ret, ctx);
-    if (UNLIKELY(result != OK_ATOM)) {
-        RAISE_ERROR(result);
+
+    char *bin_buf = NULL;
+    char *alloc_ptr = NULL;
+    size_t bin_size = 0;
+
+    term status = iolist_to_buffer(t, &bin_buf, &bin_size);
+    if (UNLIKELY(status != OK_ATOM)) {
+        RAISE_ERROR(status);
     }
-    return ret;
+    bool allocated = bin_size > 0;
+    if (allocated) {
+        alloc_ptr = bin_buf;
+    } else {
+        bin_buf = "";
+        bin_size = 0;
+    }
+
+    if (UNLIKELY(memory_ensure_free(ctx, term_binary_heap_size(bin_size)) != MEMORY_GC_OK)) {
+        free(alloc_ptr);
+        return OUT_OF_MEMORY_ATOM;
+    }
+    term bin_res = term_from_literal_binary(bin_buf, bin_size, &ctx->heap, ctx->global);
+
+    free(alloc_ptr);
+    return bin_res;
 }
 
 static avm_int_t to_digit_index(avm_int_t character)
@@ -5576,42 +5585,64 @@ static term nif_erlang_lists_subtract(Context *ctx, int argc, term argv[])
 static term nif_zlib_compress_1(Context *ctx, int argc, term argv[])
 {
     UNUSED(argc)
-    term to_compress = argv[0];
-    if (term_is_list(to_compress)) {
-        term to_compress_binary;
-        term result = list_to_binary(to_compress, &to_compress_binary, ctx);
-        if (result != OK_ATOM) {
-            RAISE_ERROR(result);
+
+    term error = OK_ATOM;
+
+    Bytef *output_buf = NULL;
+    char *input_buf = NULL;
+    size_t input_size = 0;
+    char *alloc_ptr = NULL;
+
+    term input = argv[0];
+    if (LIKELY(term_is_list(input))) {
+        term status = iolist_to_buffer(input, &input_buf, &input_size);
+        if (UNLIKELY(status != OK_ATOM)) {
+            error = status;
+            goto cleanup;
         }
-        to_compress = to_compress_binary;
-    }
-    if (UNLIKELY(!term_is_binary(to_compress))) {
-        RAISE_ERROR(BADARG_ATOM);
+
+        bool allocated = input_size > 0;
+        if (allocated) {
+            alloc_ptr = input_buf;
+        } else {
+            input_buf = "";
+            input_size = 0;
+        }
+    } else if (LIKELY(term_is_binary(input))) {
+        input_buf = (char *) term_binary_data(input);
+        input_size = term_binary_size(input);
+    } else {
+        error = BADARG_ATOM;
+        goto cleanup;
     }
 
-    size_t size = term_binary_size(to_compress);
     // to_allocate is an upper bound for compression size
     // changes to actual size after calling compress
-    uLong to_allocate = compressBound(size);
-    // Bytef is an unsigned char, term_binary_data return const *char
-    const Bytef *to_compress_data = (const Bytef *) term_binary_data(to_compress);
-    Bytef *compressed = malloc(to_allocate);
-    if (IS_NULL_PTR(compressed)) {
-        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    uLong to_allocate = compressBound(input_size);
+    output_buf = malloc(to_allocate);
+    if (IS_NULL_PTR(output_buf)) {
+        error = OUT_OF_MEMORY_ATOM;
+        goto cleanup;
     }
 
-    int z_ret = compress(compressed, &to_allocate, to_compress_data, size);
+    int z_ret = compress(output_buf, &to_allocate, (const Bytef *) input_buf, input_size);
     if (UNLIKELY(z_ret != Z_OK)) {
-        free(compressed);
-        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+        error = OUT_OF_MEMORY_ATOM;
+        goto cleanup;
     }
 
     if (UNLIKELY(memory_ensure_free(ctx, term_binary_data_size_in_terms(to_allocate)) != MEMORY_GC_OK)) {
-        free(compressed);
-        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+        error = OUT_OF_MEMORY_ATOM;
+        goto cleanup;
     }
-    term bin_res = term_from_literal_binary(compressed, to_allocate, &ctx->heap, ctx->global);
-    free(compressed);
+    term bin_res = term_from_literal_binary(output_buf, to_allocate, &ctx->heap, ctx->global);
+
+cleanup:
+    free(alloc_ptr);
+    free(output_buf);
+    if (UNLIKELY(error != OK_ATOM)) {
+        RAISE_ERROR(error);
+    }
     return bin_res;
 }
 #endif

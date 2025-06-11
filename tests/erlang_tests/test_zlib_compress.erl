@@ -23,11 +23,12 @@
 -export([start/0]).
 
 start() ->
-    ok = test_zlib_compress_binary(),
-    ok = test_zlib_compress_iolist(),
+    ok = compress_binary(),
+    ok = compress_iolist(),
+    ok = bad_inputs(),
     0.
 
-test_zlib_compress_binary() ->
+compress_binary() ->
     ToCompress =
         <<"Actually, this sentence could be a bit shorter. We definitelly need to compress it.">>,
     % Data from original erlang implementation
@@ -38,7 +39,8 @@ test_zlib_compress_binary() ->
             214, 77, 220, 11, 157, 44, 208, 216, 252, 121, 39, 221, 97, 10, 63, 241, 84, 30, 23>>,
     ProperlyCompressed = zlib:compress(ToCompress),
     ok.
-test_zlib_compress_iolist() ->
+
+compress_iolist() ->
     ToCompressList = [
         <<"Actually,">>,
         " this sentence ",
@@ -57,4 +59,24 @@ test_zlib_compress_iolist() ->
             22, 180, 74, 212, 177, 180, 161, 16, 25, 69, 2, 222, 199, 12, 206, 132, 151, 104, 188,
             196, 36, 168, 27, 70, 54, 196, 248, 247, 253, 76, 186, 67, 34, 125, 214, 36, 29, 203>>,
     ProperlyCompressed = zlib:compress(ToCompressList),
+    
+    true = is_binary(zlib:compress([])),
+    true = is_binary(zlib:compress([[]])),
+    true = is_binary(zlib:compress([[],[]])),
+    true = is_binary(zlib:compress([[]|<<>>])),
     ok.
+
+bad_inputs() ->
+    ok = raises(badarg, fun() -> zlib:compress(1) end),
+    ok = raises(badarg, fun() -> zlib:compress([{}]) end),
+    ok = raises(badarg, fun() -> zlib:compress([1024]) end),
+    ok.
+
+raises(Error, F) ->
+    try F() of
+        V ->
+            {unexpected, V}
+    catch
+        error:Error -> ok;
+        C:E -> {unexpected, C, E}
+    end.
