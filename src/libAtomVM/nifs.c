@@ -2574,7 +2574,7 @@ static term nif_erlang_list_to_binary_1(Context *ctx, int argc, term argv[])
 
     if (UNLIKELY(memory_ensure_free(ctx, term_binary_heap_size(bin_size)) != MEMORY_GC_OK)) {
         free(alloc_ptr);
-        return OUT_OF_MEMORY_ATOM;
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
     }
     term bin_res = term_from_literal_binary(bin_buf, bin_size, &ctx->heap, ctx->global);
 

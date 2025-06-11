@@ -327,7 +327,7 @@ InteropFunctionResult interop_iolist_size(term t, size_t *size)
 
 static inline char is_safe_downcast(avm_int_t value)
 {
-    return CHAR_MIN <= value && value <= CHAR_MAX;
+    return 0 <= value && value <= UCHAR_MAX;
 }
 
 static inline InteropFunctionResult write_string_fold_fun(term t, void *accum)
