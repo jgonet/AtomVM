@@ -26,7 +26,9 @@
 #include "tempstack.h"
 #include "term.h"
 #include "term_typedef.h"
+#include "utils.h"
 #include "valueshashtable.h"
+#include <assert.h>
 #include <stdint.h>
 
 char *interop_term_to_string(term t, int *ok)
@@ -238,6 +240,49 @@ term interop_proplist_get_value_default(term list, term key, term default_value)
     }
 
     return default_value;
+}
+
+bool interop_proplist_get_options(term list, KVPair atoms[], size_t n)
+{
+    assert(PLATFORM_ATOMS_BASE_INDEX < 255);
+    size_t indexes[255];
+    for (size_t i = 0; i < 255; ++i) {
+        indexes[i] = SIZE_MAX;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        size_t atom_index = term_to_atom_index(atoms[i].key);
+        indexes[atom_index] = i;
+    }
+
+    while (term_is_nonempty_list(list)) {
+        term head = term_get_list_head(list);
+        term key;
+        term value = TRUE_ATOM;
+
+        if (LIKELY(term_is_atom(head))) {
+            key = head;
+        } else if (LIKELY(term_is_tuple(head) && term_get_tuple_arity(head) == 2)) {
+            key = term_get_tuple_element(head, 0);
+            value = term_get_tuple_element(head, 1);
+            if (UNLIKELY(!term_is_atom(key))) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        size_t index = term_to_atom_index(key);
+        size_t option_index = indexes[index];
+        if (UNLIKELY(option_index == SIZE_MAX)) {
+            return false;
+        }
+        *(atoms[option_index].value) = value;
+        list = term_get_list_tail(list);
+    }
+    if (!term_is_nil(list)) {
+        return false;
+    }
+    return true;
 }
 
 inline InteropFunctionResult interop_chardata_fold(term t, interop_chardata_fold_fun fold_fun, interop_chardata_rest_fun rest_fun, void *accum)

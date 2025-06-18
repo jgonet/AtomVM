@@ -62,6 +62,12 @@ typedef struct
     int i_val;
 } AtomStringIntPair;
 
+typedef struct
+{
+    term key;
+    term *value;
+} KVPair;
+
 typedef InteropFunctionResult (*interop_chardata_fold_fun)(term t, void *accum);
 typedef void (*interop_chardata_rest_fun)(term t, void *accum);
 
@@ -75,6 +81,7 @@ term interop_proplist_get_value(term list, term key);
 term interop_proplist_get_value_default(term list, term key, term default_value);
 term interop_map_get_value(GlobalContext *glb, term map, term key);
 term interop_map_get_value_default(GlobalContext *glb, term map, term key, term default_value);
+bool interop_proplist_get_options(term list, KVPair options[], size_t n);
 term interop_chars_to_list(const char *chars, size_t len, Heap *heap);
 
 NO_DISCARD InteropFunctionResult interop_iolist_size(term t, size_t *size);

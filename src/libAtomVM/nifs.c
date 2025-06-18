@@ -1232,12 +1232,26 @@ static NativeHandlerResult process_console_mailbox(Context *ctx)
 // opts_term is [] for spawn/1,3
 static term do_spawn(Context *ctx, Context *new_ctx, size_t arity, size_t n_freeze, term opts_term)
 {
-    term min_heap_size_term = interop_proplist_get_value(opts_term, MIN_HEAP_SIZE_ATOM);
-    term max_heap_size_term = interop_proplist_get_value(opts_term, MAX_HEAP_SIZE_ATOM);
-    term link_term = interop_proplist_get_value(opts_term, LINK_ATOM);
-    term monitor_term = interop_proplist_get_value(opts_term, MONITOR_ATOM);
-    term heap_growth_strategy = interop_proplist_get_value_default(opts_term, ATOMVM_HEAP_GROWTH_ATOM, BOUNDED_FREE_ATOM);
-    term request_term = interop_proplist_get_value_default(opts_term, REQUEST_ATOM, UNDEFINED_ATOM);
+    term min_heap_size_term = term_nil();
+    term max_heap_size_term = term_nil();
+    term link_term = term_nil();
+    term monitor_term = term_nil();
+    term heap_growth_strategy = BOUNDED_FREE_ATOM;
+    term request_term = UNDEFINED_ATOM;
+    KVPair parsed_opts[] = {
+        { .key = MIN_HEAP_SIZE_ATOM, .value = &min_heap_size_term },
+        { .key = MAX_HEAP_SIZE_ATOM, .value = &max_heap_size_term },
+        { .key = LINK_ATOM, .value = &link_term },
+        { .key = MONITOR_ATOM, .value = &monitor_term },
+        { .key = ATOMVM_HEAP_GROWTH_ATOM, .value = &heap_growth_strategy },
+        { .key = REQUEST_ATOM, .value = &request_term },
+    };
+    size_t parsed_opts_size = sizeof(parsed_opts) / sizeof(parsed_opts[0]);
+    bool ok = interop_proplist_get_options(opts_term, parsed_opts, parsed_opts_size);
+    if (UNLIKELY(!ok)) {
+        RAISE_ERROR(BADARG_ATOM);
+    }
+
     term group_leader;
     bool valid_request = false;
 
@@ -3290,16 +3304,9 @@ static term nif_binary_split(Context *ctx, int argc, term argv[])
 static bool get_binary_scope_slice(term binary, term options, BinaryPosLen *scope_slice)
 {
     term scope_opt = term_invalid_term();
-    while (term_is_nonempty_list(options)) {
-        term head = term_get_list_head(options);
-        if (LIKELY(term_is_tuple(head) && term_get_tuple_arity(head) == 2 && term_get_tuple_element(head, 0) == SCOPE_ATOM)) {
-            scope_opt = term_get_tuple_element(head, 1);
-        } else {
-            return false;
-        }
-        options = term_get_list_tail(options);
-    }
-    if (!term_is_nil(options)) {
+    KVPair parsed_options[] = { { .key = SCOPE_ATOM, .value = &scope_opt } };
+    bool ok = interop_proplist_get_options(options, parsed_options, 1);
+    if (!ok) {
         return false;
     }
 
