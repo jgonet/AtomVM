@@ -66,6 +66,11 @@ start() ->
     ok = fail_with_badarg(fun() -> binary:match(?ID(not_binary), ?ID(<<"a">>), ?ID([])) end),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(not_binary), ?ID([])) end),
     ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID(not_list)) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID([{scope, {1, 0}}, badopt])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID([{scope, {1, 0}} | badopt])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID([{scope, not_tuple}])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID([{scope, {1}}])) end),
+    ok = fail_with_badarg(fun() -> binary:match(?ID(<<"a">>), ?ID(<<"a">>), ?ID([{scope, {1, 2, 3}}])) end),
 
     % bad scope
     ok = fail_with_badarg(fun() ->

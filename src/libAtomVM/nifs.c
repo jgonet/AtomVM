@@ -3289,7 +3289,20 @@ static term nif_binary_split(Context *ctx, int argc, term argv[])
 
 static bool get_binary_scope_slice(term binary, term options, BinaryPosLen *scope_slice)
 {
-    term scope_opt = interop_proplist_get_value_default(options, SCOPE_ATOM, term_invalid_term());
+    term scope_opt = term_invalid_term();
+    while (term_is_nonempty_list(options)) {
+        term head = term_get_list_head(options);
+        if (LIKELY(term_is_tuple(head) && term_get_tuple_arity(head) == 2 && term_get_tuple_element(head, 0) == SCOPE_ATOM)) {
+            scope_opt = term_get_tuple_element(head, 1);
+        } else {
+            return false;
+        }
+        options = term_get_list_tail(options);
+    }
+    if (!term_is_nil(options)) {
+        return false;
+    }
+
     if (term_is_invalid_term(scope_opt)) {
         size_t size = term_binary_size(binary);
         return term_normalize_binary_pos_len(binary, 0, (avm_int_t) size, scope_slice);
@@ -3301,7 +3314,7 @@ static bool get_binary_scope_slice(term binary, term options, BinaryPosLen *scop
 
     term pos_term = term_get_tuple_element(scope_opt, 0);
     term len_term = term_get_tuple_element(scope_opt, 1);
-    if (UNLIKELY(!term_is_any_integer(pos_term) || !term_is_any_integer(len_term))) {
+    if (UNLIKELY(!term_is_integer(pos_term) || !term_is_integer(len_term))) {
         return false;
     }
 
@@ -3375,7 +3388,7 @@ static term nif_binary_match(Context *ctx, int argc, term argv[])
     term binary_term = argv[0];
     term pattern_or_patterns_term = argv[1];
     term options_term = argc == 3 ? argv[2] : term_nil();
-    
+
     VALIDATE_VALUE(binary_term, term_is_binary);
     VALIDATE_VALUE(options_term, term_is_list);
     VALIDATE_VALUE(pattern_or_patterns_term, is_valid_pattern);
